@@ -4,23 +4,26 @@ from sensor_msgs.msg import LaserScan
 from rclpy.qos import qos_profile_sensor_data
 
 class LaserScanFilter(Node):
-
     def __init__(self):
         super().__init__('laser_scan_filter')
+        # Parameters
+        self.declare_parameter("min_range", 0.1)
+        self.declare_parameter("max_range", 5.0)
+
+        # Pub / Sub
         self.subscription = self.create_subscription(
-            LaserScan,
-            'scan',
+            LaserScan, 'scan',
             self.listener_callback,
             qos_profile=qos_profile_sensor_data
         )
         self.publisher = self.create_publisher(LaserScan, 'filtered_scan', 10)
-        self.min_range = 0.1  # Minimum range value (meters)
-        self.max_range = 5.0  # Maximum range value (meters)
-        self.get_logger().info("LaserScan Filter Node has been started.")
+
+        # Initialize
+        self.min_range = self.get_parameter("min_range").value  # Minimum range value (meters)
+        self.max_range = self.get_parameter("max_range").value  # Maximum range value (meters)
+        self.get_logger().info(f"LaserScan Filter Node started with min_range={self.min_range}, max_range={self.max_range}.")
 
     def listener_callback(self, msg):
-        
-
         filtered_ranges = [
             r if self.min_range <= r <= self.max_range else self.max_range - 0.01 for r in msg.ranges
         ]
