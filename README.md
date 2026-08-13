@@ -18,6 +18,17 @@ Pass different parameters if needed.
 [default]:=5.0
 ```
 
+### ignored_indices
+
+Can be used to discard faulty data or limit scan width using a formatted string of indices or ranges.
+
+```ros2 parameters
+[default]:=""
+    Keeps all data
+:="1:5,8:10,12"
+    Discards indices 1, 2, 3, 4, 5, 8, 9, 10, 12
+```
+
 ## Topics
 
 Pass remappings if needed.

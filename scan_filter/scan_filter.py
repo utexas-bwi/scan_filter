@@ -9,6 +9,7 @@ class LaserScanFilter(Node):
         # Parameters
         self.declare_parameter("min_range", 0.1)
         self.declare_parameter("max_range", 5.0)
+        self.declare_parameter("ignored_indices", "")
 
         # Pub / Sub
         self.subscription = self.create_subscription(
@@ -21,12 +22,53 @@ class LaserScanFilter(Node):
         # Initialize
         self.min_range = self.get_parameter("min_range").value  # Minimum range value (meters)
         self.max_range = self.get_parameter("max_range").value  # Maximum range value (meters)
-        self.get_logger().info(f"LaserScan Filter Node started with min_range={self.min_range}, max_range={self.max_range}.")
+        self.ignored_indices = self._parse_ignored_indices(self.get_parameter("ignored_indices").value)
+        self.get_logger().info(
+            f"LaserScan Filter Node started with min_range={self.min_range}, "
+            f"max_range={self.max_range}. Ignoring indices: {self.ignored_indices}."
+        )
+
+    def _parse_ignored_indices(self, value):
+        if value is None:
+            return []
+        text = str(value).strip()
+        if not text:
+            return []
+
+        indices = set()
+        for part in text.split(','):
+            token = part.strip()
+            if not token:
+                continue
+
+            if ':' in token:
+                try:
+                    start_s, end_s = [chunk.strip() for chunk in token.split(':', 1)]
+                    start = int(start_s)
+                    end = int(end_s)
+                except ValueError:
+                    self.get_logger().warn(f"Malformed range token '{token}' in ignored_indices.")
+                    continue
+
+                if end < start:
+                    start, end = end, start
+                indices.update(range(start, end + 1))
+            else:
+                try:
+                    indices.add(int(token))
+                except ValueError:
+                    self.get_logger().warn(f"Malformed index '{token}' in ignored_indices.")
+
+        return sorted(indices)
 
     def listener_callback(self, msg):
         filtered_ranges = [
             r if self.min_range <= r <= self.max_range else self.max_range - 0.01 for r in msg.ranges
         ]
+
+        for i in self.ignored_indices:
+            if 0 <= i < len(filtered_ranges):
+                filtered_ranges[i] = self.max_range - 0.01
 
         filtered_msg = LaserScan()
         filtered_msg.header = msg.header
